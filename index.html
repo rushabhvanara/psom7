@@ -1,1 +1,703 @@
-index
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Simulation: Transmission Voltage Control with SVC & STATCOM</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --text-color: #f8fafc;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: var(--accent-blue);
+        }
+
+        header p {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Control Panel Styling */
+        .control-panel {
+            background-color: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        select, input[type="range"], button {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: #0f172a;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .slider-val {
+            font-size: 0.8rem;
+            color: var(--accent-blue);
+            float: right;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: #000;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #7dd3fc;
+        }
+
+        .btn-danger {
+            background-color: var(--accent-red);
+            color: #fff;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #f87171;
+        }
+
+        /* Simulation Canvas & Plots */
+        .view-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        canvas {
+            width: 100%;
+            background-color: #020617;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Metrics Readout Display */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+        }
+
+        .metric-box {
+            background-color: #020617;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .text-green { color: var(--accent-green); }
+        .text-yellow { color: var(--accent-yellow); }
+        .text-red { color: var(--accent-red); }
+        .text-blue { color: var(--accent-blue); }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Web Simulation: Transmission System Voltage Control</h1>
+        <p>Interactive Comparison of Shunt FACTS Controllers: <strong>SVC vs. STATCOM</strong></p>
+    </header>
+
+    <div class="main-container">
+        <!-- Control Panel Sidebar -->
+        <div class="control-panel">
+            <div class="control-group">
+                <label for="deviceSelect">FACTS Device Type</label>
+                <select id="deviceSelect">
+                    <option value="NONE">None (Uncompensated)</option>
+                    <option value="SVC">SVC (Static Var Compensator)</option>
+                    <option value="STATCOM" selected>STATCOM (Static Synchronous Compensator)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="scenarioSelect">Test Scenario Preset</label>
+                <select id="scenarioSelect">
+                    <option value="NORMAL">Normal Loading (0.98 - 1.02 p.u.)</option>
+                    <option value="SAG">Heavy Inductive Load (Voltage Sag)</option>
+                    <option value="SWELL">Light Load (Ferranti Effect / Swell)</option>
+                    <option value="FAULT">3-Phase Fault Disturbance</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Target Grid Voltage ($V_{ref}$) <span class="slider-val" id="vrefVal">1.00 p.u.</span></label>
+                <input type="range" id="vrefSlider" min="0.90" max="1.10" step="0.01" value="1.00">
+            </div>
+
+            <div class="control-group">
+                <label>Reactive Load ($Q_{load}$) <span class="slider-val" id="qloadVal">100 MVAR</span></label>
+                <input type="range" id="qloadSlider" min="-100" max="300" step="10" value="100">
+            </div>
+
+            <div class="control-group">
+                <label>Active Load ($P_{load}$) <span class="slider-val" id="ploadVal">200 MW</span></label>
+                <input type="range" id="ploadSlider" min="0" max="400" step="10" value="200">
+            </div>
+
+            <div class="control-group">
+                <label>Controller Gain ($K_p$) <span class="slider-val" id="kpVal">20</span></label>
+                <input type="range" id="kpSlider" min="1" max="50" step="1" value="20">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-primary" id="btnPause">Pause</button>
+                <button class="btn-danger" id="btnFault">Trigger 100ms Fault</button>
+            </div>
+        </div>
+
+        <!-- Right Side: Visualization and Plots -->
+        <div class="view-panel">
+            
+            <!-- Real-time Metrics Readout -->
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <div class="metric-label">Bus Voltage (V_bus)</div>
+                    <div class="metric-value text-blue" id="readoutV">1.000 p.u.</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Voltage Deviation</div>
+                    <div class="metric-value text-green" id="readoutDev">0.00 %</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Injected FACTS Q</div>
+                    <div class="metric-value text-yellow" id="readoutQ">0.0 MVAR</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Device Mode</div>
+                    <div class="metric-value text-green" id="readoutMode">IDLE</div>
+                </div>
+            </div>
+
+            <!-- Single-Line Diagram Circuit Visualization -->
+            <div class="card">
+                <div class="card-title">
+                    Transmission System Single Line Diagram (SLD)
+                </div>
+                <canvas id="sldCanvas" height="150"></canvas>
+            </div>
+
+            <!-- Oscilloscope Real-Time Scope Plot -->
+            <div class="card">
+                <div class="card-title">
+                    Real-time Oscilloscope
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div> Voltage (p.u.)</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div> Injected Q (MVAR)</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#ef4444;"></div> Fault Active</div>
+                    </div>
+                </div>
+                <canvas id="scopeCanvas" height="220"></canvas>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- Simulation State Variables ---
+        let isRunning = true;
+        let time = 0;
+        const dt = 0.02; // 20ms simulation step time
+
+        // System Parameters
+        const V_sending = 1.0; // Infinite bus voltage (p.u.)
+        const X_line = 0.15;   // Line reactance (p.u.)
+        const R_line = 0.02;   // Line resistance (p.u.)
+
+        // User Controlled Settings
+        let deviceType = "STATCOM";
+        let V_ref = 1.0;
+        let P_load = 200; // MW
+        let Q_load = 100; // MVAR
+        let Kp = 20;
+
+        // Dynamic State
+        let V_bus = 1.0;
+        let Q_facts = 0; // MVAR injected (+ for capacitive, - for inductive)
+        let faultActive = false;
+        let faultTimer = 0;
+
+        // Buffer for Oscilloscope Plot
+        const maxPoints = 300;
+        let historyV = new Array(maxPoints).fill(1.0);
+        let historyQ = new Array(maxPoints).fill(0);
+        let historyFault = new Array(maxPoints).fill(0);
+
+        // Canvas Contexts
+        const sldCanvas = document.getElementById('sldCanvas');
+        const sldCtx = sldCanvas.getContext('2d');
+        const scopeCanvas = document.getElementById('scopeCanvas');
+        const scopeCtx = scopeCanvas.getContext('2d');
+
+        // --- DOM Elements ---
+        const deviceSelect = document.getElementById('deviceSelect');
+        const scenarioSelect = document.getElementById('scenarioSelect');
+        const vrefSlider = document.getElementById('vrefSlider');
+        const qloadSlider = document.getElementById('qloadSlider');
+        const ploadSlider = document.getElementById('ploadSlider');
+        const kpSlider = document.getElementById('kpSlider');
+        const btnPause = document.getElementById('btnPause');
+        const btnFault = document.getElementById('btnFault');
+
+        // Readout Elements
+        const readoutV = document.getElementById('readoutV');
+        const readoutDev = document.getElementById('readoutDev');
+        const readoutQ = document.getElementById('readoutQ');
+        const readoutMode = document.getElementById('readoutMode');
+
+        // --- Event Listeners ---
+        deviceSelect.addEventListener('change', (e) => deviceType = e.target.value);
+        
+        scenarioSelect.addEventListener('change', (e) => {
+            switch(e.target.value) {
+                case 'NORMAL':
+                    ploadSlider.value = 200; qloadSlider.value = 50; break;
+                case 'SAG':
+                    ploadSlider.value = 300; qloadSlider.value = 250; break;
+                case 'SWELL':
+                    ploadSlider.value = 50; qloadSlider.value = -80; break;
+                case 'FAULT':
+                    triggerFault(); break;
+            }
+            updateSliderLabels();
+        });
+
+        vrefSlider.addEventListener('input', (e) => { V_ref = parseFloat(e.target.value); updateSliderLabels(); });
+        qloadSlider.addEventListener('input', (e) => { Q_load = parseFloat(e.target.value); updateSliderLabels(); });
+        ploadSlider.addEventListener('input', (e) => { P_load = parseFloat(e.target.value); updateSliderLabels(); });
+        kpSlider.addEventListener('input', (e) => { Kp = parseFloat(e.target.value); updateSliderLabels(); });
+
+        btnPause.addEventListener('click', () => {
+            isRunning = !isRunning;
+            btnPause.textContent = isRunning ? "Pause" : "Resume";
+        });
+
+        btnFault.addEventListener('click', triggerFault);
+
+        function triggerFault() {
+            faultActive = true;
+            faultTimer = 0.2; // 200ms fault
+        }
+
+        function updateSliderLabels() {
+            document.getElementById('vrefVal').textContent = parseFloat(vrefSlider.value).toFixed(2) + " p.u.";
+            document.getElementById('qloadVal').textContent = qloadSlider.value + " MVAR";
+            document.getElementById('ploadVal').textContent = ploadSlider.value + " MW";
+            document.getElementById('kpVal').textContent = kpSlider.value;
+            
+            P_load = parseFloat(ploadSlider.value);
+            Q_load = parseFloat(qloadSlider.value);
+        }
+
+        // --- Physics & Control Mathematical Engine ---
+        function updatePhysics() {
+            if (!isRunning) return;
+
+            // Handle temporary fault timing
+            if (faultActive) {
+                faultTimer -= dt;
+                if (faultTimer <= 0) faultActive = false;
+            }
+
+            // Convert MW/MVAR to p.u. (Base = 100 MVA)
+            const p_pu = P_load / 100.0;
+            let q_pu = Q_load / 100.0;
+
+            if (faultActive) {
+                // Ground short circuit simulates extreme voltage drop
+                V_bus = 0.15 + (Math.random() * 0.05); // Voltage crashes near 0.15 p.u.
+                Q_facts = 0;
+            } else {
+                // Calculate uncompensated voltage drop approximation: V_bus ≈ V_s - (P*R + Q*X) / V_s
+                let V_uncompensated = V_sending - (p_pu * R_line + q_pu * X_line);
+
+                // Voltage Error fed into FACTS Controller
+                let v_error = V_ref - V_bus;
+
+                if (deviceType === "NONE") {
+                    Q_facts = 0;
+                    V_bus += (V_uncompensated - V_bus) * 0.2; // Smoothing
+                } 
+                else if (deviceType === "SVC") {
+                    // SVC: Susceptance (B_svc) is modulated by PI controller.
+                    // Reactive Power Q_svc = B_svc * V_bus^2
+                    // IMPORTANT: Capacity drops quadratically with lower bus voltage!
+                    let B_max = 2.5; // Max capacitive susceptance limit
+                    let B_min = -1.5; // Max inductive susceptance limit
+
+                    let B_target = Kp * v_error;
+                    B_target = Math.max(B_min, Math.min(B_max, B_target));
+
+                    // Q = B * V^2 (Voltage dependency factor)
+                    let Q_target_pu = B_target * Math.pow(V_bus, 2); 
+                    
+                    // First order lag filter for thyristor response
+                    let Q_facts_pu = Q_target_pu; 
+                    Q_facts = Q_facts_pu * 100.0; // Convert to MVAR
+
+                    // Voltage restoration formula including FACTS injection
+                    let V_target = V_sending - (p_pu * R_line + (q_pu - Q_facts_pu) * X_line);
+                    V_bus += (V_target - V_bus) * 0.3;
+                } 
+                else if (deviceType === "STATCOM") {
+                    // STATCOM: Dynamic Current Source Controller (VSC based).
+                    // Injected Current I_q = Kp * V_error.
+                    // Reactive Power Q_statcom = I_q * V_bus
+                    // IMPORTANT: Current is constant up to limit even at low voltage!
+                    let I_max = 2.5; // Max capacitive current limit (p.u.)
+                    let I_min = -1.5; // Max inductive current limit (p.u.)
+
+                    let I_q = Kp * v_error;
+                    I_q = Math.max(I_min, Math.min(I_max, I_q));
+
+                    // Q = I_q * V_bus (Linear voltage dependency)
+                    let Q_target_pu = I_q * V_bus;
+                    
+                    let Q_facts_pu = Q_target_pu;
+                    Q_facts = Q_facts_pu * 100.0; // Convert to MVAR
+
+                    // Fast VSC PWM Voltage restoration
+                    let V_target = V_sending - (p_pu * R_line + (q_pu - Q_facts_pu) * X_line);
+                    V_bus += (V_target - V_bus) * 0.5; // Faster dynamic response than SVC
+                }
+            }
+
+            // Clamp bus voltage to physical bounds
+            V_bus = Math.max(0.05, Math.min(1.4, V_bus));
+
+            // Record History for Plotting
+            historyV.push(V_bus);
+            historyV.shift();
+
+            historyQ.push(Q_facts);
+            historyQ.shift();
+
+            historyFault.push(faultActive ? 1 : 0);
+            historyFault.shift();
+
+            updateReadouts();
+        }
+
+        // --- Update UI Text Displays ---
+        function updateReadouts() {
+            readoutV.textContent = V_bus.toFixed(3) + " p.u.";
+            
+            let dev = ((V_bus - V_ref) / V_ref) * 100;
+            readoutDev.textContent = (dev > 0 ? "+" : "") + dev.toFixed(2) + " %";
+            
+            readoutDev.className = "metric-value " + 
+                (Math.abs(dev) <= 2 ? "text-green" : Math.abs(dev) <= 5 ? "text-yellow" : "text-red");
+
+            readoutQ.textContent = Q_facts.toFixed(1) + " MVAR";
+
+            if (deviceType === "NONE") {
+                readoutMode.textContent = "OFF";
+                readoutMode.className = "metric-value text-red";
+            } else if (Q_facts > 5) {
+                readoutMode.textContent = "CAPACITIVE (+Q)";
+                readoutMode.className = "metric-value text-green";
+            } else if (Q_facts < -5) {
+                readoutMode.textContent = "INDUCTIVE (-Q)";
+                readoutMode.className = "metric-value text-yellow";
+            } else {
+                readoutMode.textContent = "STANDBY";
+                readoutMode.className = "metric-value text-blue";
+            }
+        }
+
+        // --- Render Canvas Single Line Diagram (SLD) ---
+        function drawSLD() {
+            const w = sldCanvas.width = sldCanvas.clientWidth;
+            const h = sldCanvas.height = sldCanvas.clientHeight;
+
+            sldCtx.clearRect(0, 0, w, h);
+
+            const centerY = h / 2 - 10;
+            const bus1X = 60;
+            const bus2X = w - 80;
+            const midX = (bus1X + bus2X) / 2;
+
+            // Bus 1 (Generator / Sending End)
+            sldCtx.strokeStyle = "#38bdf8";
+            sldCtx.lineWidth = 4;
+            sldCtx.beginPath();
+            sldCtx.moveTo(bus1X, centerY - 35);
+            sldCtx.lineTo(bus1X, centerY + 35);
+            sldCtx.stroke();
+
+            // Generator Symbol
+            sldCtx.lineWidth = 2;
+            sldCtx.beginPath();
+            sldCtx.arc(bus1X - 25, centerY, 15, 0, Math.PI * 2);
+            sldCtx.stroke();
+            sldCtx.fillStyle = "#38bdf8";
+            sldCtx.font = "12px sans-serif";
+            sldCtx.fillText("G", bus1X - 30, centerY + 4);
+            sldCtx.fillText("Vs (1.0)", bus1X - 40, centerY + 50);
+
+            // Bus 2 (Receiving End / Load Bus)
+            sldCtx.strokeStyle = faultActive ? "#ef4444" : "#22c55e";
+            sldCtx.lineWidth = 4;
+            sldCtx.beginPath();
+            sldCtx.moveTo(bus2X, centerY - 35);
+            sldCtx.lineTo(bus2X, centerY + 35);
+            sldCtx.stroke();
+            sldCtx.fillStyle = "#cbd5e1";
+            sldCtx.fillText(`V_bus: ${V_bus.toFixed(2)} p.u.`, bus2X - 30, centerY + 50);
+
+            // Transmission Line
+            sldCtx.strokeStyle = faultActive ? "#ef4444" : "#94a3b8";
+            sldCtx.lineWidth = 3;
+            sldCtx.beginPath();
+            sldCtx.moveTo(bus1X, centerY);
+            sldCtx.lineTo(bus2X, centerY);
+            sldCtx.stroke();
+
+            // Line Impedance Box
+            sldCtx.fillStyle = "#1e293b";
+            sldCtx.fillRect(midX - 30, centerY - 12, 60, 24);
+            sldCtx.strokeRect(midX - 30, centerY - 12, 60, 24);
+            sldCtx.fillStyle = "#cbd5e1";
+            sldCtx.font = "10px sans-serif";
+            sldCtx.fillText("R + jX", midX - 14, centerY + 4);
+
+            // FACTS Device Connection at Bus 2
+            if (deviceType !== "NONE") {
+                sldCtx.strokeStyle = "#f59e0b";
+                sldCtx.lineWidth = 2;
+                sldCtx.beginPath();
+                sldCtx.moveTo(bus2X, centerY);
+                sldCtx.lineTo(bus2X, centerY + 50);
+                sldCtx.stroke();
+
+                // Device Icon
+                sldCtx.fillStyle = "#1e293b";
+                sldCtx.fillRect(bus2X - 35, centerY + 50, 70, 30);
+                sldCtx.strokeRect(bus2X - 35, centerY + 50, 70, 30);
+
+                sldCtx.fillStyle = "#f59e0b";
+                sldCtx.font = "bold 11px sans-serif";
+                sldCtx.fillText(deviceType, bus2X - 28, centerY + 68);
+            }
+
+            // Load Symbol at Bus 2
+            sldCtx.strokeStyle = "#cbd5e1";
+            sldCtx.beginPath();
+            sldCtx.moveTo(bus2X, centerY - 20);
+            sldCtx.lineTo(bus2X + 30, centerY - 20);
+            sldCtx.lineTo(bus2X + 20, centerY - 26);
+            sldCtx.moveTo(bus2X + 30, centerY - 20);
+            sldCtx.lineTo(bus2X + 20, centerY - 14);
+            sldCtx.stroke();
+            sldCtx.fillText("LOAD", bus2X + 35, centerY - 16);
+        }
+
+        // --- Render Real-Time Oscilloscope Plot ---
+        function drawScope() {
+            const w = scopeCanvas.width = scopeCanvas.clientWidth;
+            const h = scopeCanvas.height = scopeCanvas.clientHeight;
+
+            scopeCtx.clearRect(0, 0, w, h);
+
+            // Draw Grid Lines
+            scopeCtx.strokeStyle = "#1e293b";
+            scopeCtx.lineWidth = 1;
+
+            // Horizontal Grid Lines (Voltage Levels)
+            const levels = [0.5, 0.8, 1.0, 1.2];
+            levels.forEach(lvl => {
+                let y = h - ((lvl - 0.4) / 0.9) * h;
+                scopeCtx.beginPath();
+                scopeCtx.moveTo(0, y);
+                scopeCtx.lineTo(w, y);
+                scopeCtx.stroke();
+
+                scopeCtx.fillStyle = "#64748b";
+                scopeCtx.font = "10px sans-serif";
+                scopeCtx.fillText(lvl.toFixed(1) + " pu", 5, y - 3);
+            });
+
+            const dx = w / (maxPoints - 1);
+
+            // 1. Draw Fault Background Highlights
+            scopeCtx.fillStyle = "rgba(239, 68, 68, 0.25)";
+            for (let i = 0; i < maxPoints; i++) {
+                if (historyFault[i] === 1) {
+                    scopeCtx.fillRect(i * dx, 0, dx + 1, h);
+                }
+            }
+
+            // 2. Plot Injected Reactive Power Q (MVAR) - Yellow Line
+            scopeCtx.strokeStyle = "#f59e0b";
+            scopeCtx.lineWidth = 1.5;
+            scopeCtx.beginPath();
+            for (let i = 0; i < maxPoints; i++) {
+                let x = i * dx;
+                // Scale Q (-150 to +250 MVAR) to Canvas height
+                let y = h - ((historyQ[i] + 150) / 400) * h;
+                if (i === 0) scopeCtx.moveTo(x, y);
+                else scopeCtx.lineTo(x, y);
+            }
+            scopeCtx.stroke();
+
+            // 3. Plot Bus Voltage V (p.u.) - Blue Line
+            scopeCtx.strokeStyle = "#38bdf8";
+            scopeCtx.lineWidth = 2.5;
+            scopeCtx.beginPath();
+            for (let i = 0; i < maxPoints; i++) {
+                let x = i * dx;
+                // Scale V (0.4 to 1.3 p.u.) to Canvas height
+                let y = h - ((historyV[i] - 0.4) / 0.9) * h;
+                if (i === 0) scopeCtx.moveTo(x, y);
+                else scopeCtx.lineTo(x, y);
+            }
+            scopeCtx.stroke();
+        }
+
+        // --- Main Simulation Loop ---
+        function loop() {
+            updatePhysics();
+            drawSLD();
+            drawScope();
+            requestAnimationFrame(loop);
+        }
+
+        // Initialize and Start
+        updateSliderLabels();
+        loop();
+
+    </script>
+</body>
+<footer style="text-align: center;">
+    <p>© Rushabh D. Vanara | Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+</footer>
+</html>
