@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transmission Voltage Control: SVC vs STATCOM</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --panel-bg: #ffffff;
+            --accent-blue: #0284c7;
+            --accent-green: #16a34a;
+            --accent-red: #dc2626;
+            --accent-yellow: #ca8a04;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+            overflow-x: hidden;
+        }
+
+        .home-link {
+            position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 8px;
+            text-decoration: none; color: var(--accent-blue); font-weight: 600; font-size: 0.9rem; z-index: 100;
+        }
+        @media (max-width: 950px) { .home-link { position: relative; top: 0; left: 0; margin: 10px; } }
+
+        header { text-align: center; padding: 15px 10px; flex-shrink: 0; }
+        header h1 { font-size: 1.5rem; color: var(--text-main); }
+        header p { color: var(--text-muted); font-size: 0.85rem; }
+
+        .main-grid { 
+            display: grid; 
+            grid-template-columns: 320px 1fr; 
+            gap: 20px; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            width: 100%;
+            padding: 0 20px 20px 20px;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 950px) { .main-grid { grid-template-columns: 1fr; } }
+
+        /* Sidebar Controls */
+        .sidebar { background: var(--panel-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); height: fit-content; }
+        .control-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        
+        select, input[type="range"] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: #f8fafc; }
+
+        .unit-toggle { display: flex; background: #f1f5f9; border-radius: 8px; padding: 4px; margin-bottom: 15px; }
+        .unit-toggle button { flex: 1; border: none; padding: 6px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600; color: var(--text-muted); }
+        .unit-toggle button.active { background: var(--accent-blue); color: white; }
+
+        .val-disp { float: right; color: var(--accent-blue); font-weight: bold; font-family: monospace; }
+
+        /* Metrics Display */
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .m-box { background: var(--panel-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color); text-align: center; }
+        .m-label { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; }
+        .m-val { font-size: 1.1rem; font-weight: 800; }
+        .collapse-warn { color: var(--accent-red); font-weight: bold; font-size: 0.7rem; margin-top: 4px; display: none; }
+
+        /* Visualization Cards */
+        .viz-card { background: var(--panel-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 20px; }
+        .card-header { font-weight: 700; font-size: 0.8rem; margin-bottom: 10px; color: var(--text-muted); border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
+        
+        /* Fixed Heights to prevent expansion bug */
+        .chart-wrapper { position: relative; height: 300px; width: 100%; }
+        .sld-wrapper { height: 120px; width: 100%; display: flex; justify-content: center; align-items: center; background: #fff; border-radius: 8px; border: 1px solid #f1f5f9; }
+
+        footer { 
+            margin-top: auto; padding: 20px; text-align: center; border-top: 1px solid var(--border-color); 
+            font-size: 0.85rem; color: var(--text-muted); background: white; flex-shrink: 0;
+        }
+        footer a { color: var(--accent-blue); text-decoration: none; font-weight: 600; }
+        .heart { color: var(--accent-red); }
+
+        .t-blue { color: var(--accent-blue); }
+        .t-green { color: var(--accent-green); }
+        .t-red { color: var(--accent-red); }
+        .t-yellow { color: var(--accent-yellow); }
+    </style>
+</head>
+<body>
+
+    <a href="https://rushabhvanara.github.io" class="home-link">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>rushabhvanara.github.io</span>
+    </a>
+
+    <header>
+        <h1>Transmission Voltage Control</h1>
+        <p>Comparative Study: SVC vs. STATCOM under Radial Power Flow</p>
+    </header>
+
+    <div class="main-grid">
+        <aside class="sidebar">
+            <label>Display Units</label>
+            <div class="unit-toggle">
+                <button id="puBtn" class="active">Per Unit</button>
+                <button id="absBtn">Absolute</button>
+            </div>
+
+            <div class="control-group">
+                <label>Compensation Mode</label>
+                <select id="compType">
+                    <option value="NONE">Uncompensated</option>
+                    <option value="SVC">SVC (Constant B)</option>
+                    <option value="STATCOM">STATCOM (Constant I)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Source Voltage ($V_s$) <span class="val-disp" id="vsDisp">1.00 pu</span></label>
+                <input type="range" id="vsSlider" min="0.5" max="1.2" step="0.01" value="1.00">
+            </div>
+
+            <div class="control-group">
+                <label>Nominal Rating ($Q_{rated}$) <span class="val-disp" id="qsetDisp">50 MVAR</span></label>
+                <input type="range" id="qsetSlider" min="-150" max="150" step="5" value="50">
+            </div>
+
+            <div class="control-group">
+                <label>Real Load ($P_L$) <span class="val-disp" id="plDisp">100 MW</span></label>
+                <input type="range" id="plSlider" min="0" max="300" step="5" value="100">
+            </div>
+
+            <div class="control-group">
+                <label>Reactive Load ($Q_L$) <span class="val-disp" id="qlDisp">50 MVAR</span></label>
+                <input type="range" id="qlSlider" min="-50" max="200" step="5" value="50">
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="metrics">
+                <div class="m-box">
+                    <div class="m-label">Load Bus Voltage</div>
+                    <div class="m-val t-blue" id="mv_bus">1.000</div>
+                    <div id="warn" class="collapse-warn">⚠ COLLAPSE</div>
+                </div>
+                <div class="m-box"><div class="m-label">Active Support</div><div class="m-val t-yellow" id="mv_qact">0.0</div></div>
+                <div class="m-box"><div class="m-label">Max Available Support</div><div class="m-val t-green" id="mv_qmax">0.0</div></div>
+                <div class="m-box"><div class="m-label">Line Loss (P)</div><div class="m-val t-red" id="mv_ploss">0.00</div></div>
+            </div>
+
+            <div class="viz-card">
+                <div class="card-header">Single Line Diagram</div>
+                <div class="sld-wrapper">
+                    <svg id="sldSvg" width="100%" height="100" viewBox="0 0 500 100">
+                        <!-- Transmission Line -->
+                        <line x1="80" y1="50" x2="400" y2="50" stroke="#94a3b8" stroke-width="2" />
+                        <text x="220" y="40" font-size="10" fill="#94a3b8" font-weight="bold">Line (R + jX)</text>
+                        
+                        <!-- Source -->
+                        <circle cx="50" cy="50" r="15" fill="none" stroke="#0284c7" stroke-width="2" />
+                        <path d="M42 50 Q50 35 58 50 T74 50" fill="none" stroke="#0284c7" transform="translate(-12,0) scale(0.8)"/>
+                        <text x="35" y="80" font-size="10" fill="#0284c7" font-weight="bold">Vs</text>
+
+                        <!-- Busbar -->
+                        <line x1="400" y1="20" x2="400" y2="80" stroke="#0f172a" stroke-width="4" />
+                        <text x="390" y="15" font-size="10" fill="#0f172a" font-weight="bold">Load Bus</text>
+
+                        <!-- Load Arrow -->
+                        <path d="M400 50 L450 50 L440 45 M450 50 L440 55" fill="none" stroke="#dc2626" stroke-width="2" />
+                        <text x="455" y="55" font-size="10" fill="#dc2626" font-weight="bold">Load</text>
+
+                        <!-- FACTS Device (Dynamic) -->
+                        <g id="deviceGroup" visibility="hidden">
+                            <line x1="400" y1="50" x2="400" y2="85" stroke="#ca8a04" stroke-width="2" />
+                            <rect id="deviceBox" x="375" y="85" width="50" height="15" fill="#ca8a04" rx="2" />
+                            <text id="deviceText" x="382" y="96" font-size="8" fill="white" font-weight="bold">SVC</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="viz-card">
+                <div class="card-header">Performance Characteristics (V-Q Curves)</div>
+                <div class="chart-wrapper">
+                    <canvas id="vqChart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer>
+        <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+        <p>Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+    </footer>
+
+    <script>
+        // System Params
+        const S_BASE = 100, V_BASE = 220, R_LINE = 0.02, X_LINE = 0.12, Z2 = R_LINE**2 + X_LINE**2;
+
+        // State
+        let isPU = true, Vs = 1.0, Q_rated = 50, P_load = 100, Q_load = 50, type = "NONE", V_bus = 1.0, chart;
+
+        function updateInputs() {
+            Vs = parseFloat(document.getElementById('vsSlider').value);
+            Q_rated = parseFloat(document.getElementById('qsetSlider').value);
+            P_load = parseFloat(document.getElementById('plSlider').value);
+            Q_load = parseFloat(document.getElementById('qlSlider').value);
+            type = document.getElementById('compType').value;
+
+            document.getElementById('vsDisp').textContent = isPU ? Vs.toFixed(2) + " pu" : (Vs * V_BASE).toFixed(1) + " kV";
+            document.getElementById('qsetDisp').textContent = Q_rated + " MVAR";
+            document.getElementById('plDisp').textContent = P_load + " MW";
+            document.getElementById('qlDisp').textContent = Q_load + " MVAR";
+            
+            // Update SLD visibility
+            const dev = document.getElementById('deviceGroup');
+            if(type === "NONE") {
+                dev.setAttribute('visibility', 'hidden');
+            } else {
+                dev.setAttribute('visibility', 'visible');
+                document.getElementById('deviceText').textContent = type;
+            }
+        }
+
+        function calculate() {
+            const p_pu = P_load / S_BASE, ql_pu = Q_load / S_BASE, qr_pu = Q_rated / S_BASE;
+            let q_inj = 0, q_max_avail = 0, collapsed = false;
+
+            let v_iter = 1.0; 
+            for(let i=0; i<15; i++) {
+                q_inj = (type === "SVC") ? qr_pu * (v_iter * v_iter) : (type === "STATCOM" ? qr_pu * v_iter : 0);
+                let q_net = ql_pu - q_inj;
+                let b = 2 * (p_pu * R_LINE + q_net * X_LINE) - Vs**2;
+                let c = Z2 * (p_pu**2 + q_net**2);
+                let disc = b**2 - 4*c;
+
+                if (disc < 0) { collapsed = true; v_iter = 0; break; } 
+                else { v_iter = Math.sqrt(Math.max(0, (-b + Math.sqrt(disc)) / 2)); }
+            }
+
+            V_bus = v_iter;
+            q_max_avail = (type === "SVC") ? Math.abs(qr_pu) * (V_bus**2) : Math.abs(qr_pu) * V_bus;
+
+            document.getElementById('mv_bus').textContent = collapsed ? "0.000" : (isPU ? V_bus.toFixed(3) : (V_bus * V_BASE).toFixed(1) + " kV");
+            document.getElementById('mv_qact').textContent = isPU ? q_inj.toFixed(3) + " pu" : (q_inj * S_BASE).toFixed(1) + " MVAR";
+            document.getElementById('mv_qmax').textContent = isPU ? q_max_avail.toFixed(3) + " pu" : (q_max_avail * S_BASE).toFixed(1) + " MVAR";
+            document.getElementById('warn').style.display = collapsed ? "block" : "none";
+
+            let I2 = (collapsed || V_bus <= 0.1) ? 0 : (p_pu**2 + (ql_pu - q_inj)**2) / (V_bus**2);
+            document.getElementById('mv_ploss').textContent = isPU ? (I2 * R_LINE).toFixed(4) : (I2 * R_LINE * S_BASE).toFixed(2) + " MW";
+
+            updateChart(qr_pu);
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('vqChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 21}, (_, i) => (i * 0.06).toFixed(2)),
+                    datasets: [
+                        { label: 'SVC', data: [], borderColor: '#ca8a04', borderDash: [4,4], pointRadius: 0 },
+                        { label: 'STATCOM', data: [], borderColor: '#0284c7', pointRadius: 0 },
+                        { label: 'Operating Point', data: [], backgroundColor: '#dc2626', pointRadius: 7, showLine: false }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, animation: false }
+            });
+        }
+
+        function updateChart(qr_pu) {
+            const vRange = Array.from({length: 21}, (_, i) => i * 0.06);
+            const m = isPU ? 1 : S_BASE;
+            chart.data.datasets[0].data = vRange.map(v => qr_pu * v * v * m);
+            chart.data.datasets[1].data = vRange.map(v => qr_pu * v * m);
+            let curQ = (type === 'SVC') ? qr_pu * V_bus**2 * m : (type === 'STATCOM' ? qr_pu * V_bus * m : 0);
+            chart.data.datasets[2].data = vRange.map(v => (Math.abs(v - V_bus) < 0.035 && !isNaN(V_bus) && type !== "NONE") ? curQ : null);
+            chart.update('none');
+        }
+
+        document.getElementById('puBtn').onclick = () => { isPU = true; document.getElementById('puBtn').className = 'active'; document.getElementById('absBtn').className = ''; updateInputs(); calculate(); };
+        document.getElementById('absBtn').onclick = () => { isPU = false; document.getElementById('absBtn').className = 'active'; document.getElementById('puBtn').className = ''; updateInputs(); calculate(); };
+
+        ['vsSlider', 'qsetSlider', 'plSlider', 'qlSlider', 'compType'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => { updateInputs(); calculate(); });
+        });
+
+        initChart(); updateInputs(); calculate();
+    </script>
+</body>
+</html>
