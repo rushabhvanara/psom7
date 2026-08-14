@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transmission Voltage Control: SVC vs STATCOM</title>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --panel-bg: #ffffff;
+            --header-bg: #ffffff;
+            --accent-blue: #0284c7;
+            --accent-green: #16a34a;
+            --accent-red: #dc2626;
+            --accent-yellow: #ca8a04;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --input-bg: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 100vh;
+        }
+
+        /* Top Navigation Link */
+        .home-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--accent-blue);
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        .home-link:hover { opacity: 0.8; }
+        .home-link svg { width: 20px; height: 20px; }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+            background: var(--header-bg);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 30px;
+        }
+
+        header h1 { font-size: 1.6rem; color: var(--text-main); }
+        header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 20px;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 1000px) {
+            .main-container { grid-template-columns: 1fr; }
+            .home-link { position: relative; top: 0; left: 0; margin-bottom: 10px; }
+        }
+
+        /* Sidebar Panel */
+        .control-panel {
+            background-color: var(--panel-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
+
+        select, input[type="range"], button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .toggle-container {
+            display: flex;
+            background: var(--input-bg);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .toggle-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            background: none;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .toggle-btn.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .slider-val { font-size: 0.85rem; color: var(--accent-blue); font-weight: 600; float: right; }
+
+        .btn-primary { background-color: var(--accent-blue); color: white; border: none; font-weight: 600; cursor: pointer; }
+        .btn-danger { background-color: #fee2e2; color: var(--accent-red); border: 1px solid #fecaca; font-weight: 600; cursor: pointer; }
+        .btn-danger:hover { background-color: var(--accent-red); color: white; }
+
+        /* Visualization Area */
+        .view-panel { display: flex; flex-direction: column; gap: 20px; }
+
+        /* Metrics Display */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+        .metric-box {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .metric-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { font-size: 1.1rem; font-weight: 800; margin-top: 4px; }
+
+        .card {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .card-title { font-weight: 700; color: var(--text-main); margin-bottom: 15px; display: flex; justify-content: space-between; }
+
+        canvas { width: 100%; background-color: #ffffff; border-radius: 8px; }
+
+        .legend { display: flex; gap: 15px; font-size: 0.75rem; font-weight: 600; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        footer {
+            margin-top: auto;
+            text-align: center;
+            padding: 30px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        footer a { color: var(--accent-blue); text-decoration: none; font-weight: 600; }
+        .heart { color: var(--accent-red); }
+
+        .text-green { color: var(--accent-green); }
+        .text-blue { color: var(--accent-blue); }
+        .text-red { color: var(--accent-red); }
+        .text-yellow { color: var(--accent-yellow); }
+    </style>
+</head>
+<body>
+
+    <a href="https://rushabhvanara.github.io" class="home-link">
+        <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>rushabhvanara.github.io</span>
+    </a>
+
+    <header>
+        <h1>FACTS Controllers & Voltage Regulation</h1>
+        <p>Interactive Analysis of Reactive Power Compensation on Transmission Lines</p>
+    </header>
+
+    <div class="main-container">
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Unit System</label>
+                <div class="toggle-container">
+                    <button class="toggle-btn active" id="unitPU">Per Unit (p.u.)</button>
+                    <button class="toggle-btn" id="unitAbs">Absolute (kV/MVAR)</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="deviceSelect">Device Type</label>
+                <select id="deviceSelect">
+                    <option value="NONE">Uncompensated</option>
+                    <option value="SVC">SVC (Thyristor Based)</option>
+                    <option value="STATCOM" selected>STATCOM (VSC Based)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Target $V_{ref}$ <span class="slider-val" id="vrefVal">1.00 p.u.</span></label>
+                <input type="range" id="vrefSlider" min="0.90" max="1.10" step="0.01" value="1.00">
+            </div>
+
+            <div class="control-group">
+                <label>Real Load ($P_L$) <span class="slider-val" id="ploadVal">200 MW</span></label>
+                <input type="range" id="ploadSlider" min="0" max="400" step="10" value="200">
+            </div>
+
+            <div class="control-group">
+                <label>Reactive Load ($Q_L$) <span class="slider-val" id="qloadVal">100 MVAR</span></label>
+                <input type="range" id="qloadSlider" min="-100" max="300" step="10" value="100">
+            </div>
+
+            <button class="btn-primary" id="btnPause">Pause Simulation</button>
+            <button class="btn-danger" id="btnFault">Simulate Sudden 3-Phase Fault</button>
+        </div>
+
+        <div class="view-panel">
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <div class="metric-label">Bus Voltage</div>
+                    <div class="metric-value text-blue" id="m_vbus">1.00</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">FACTS Injection</div>
+                    <div class="metric-value text-yellow" id="m_qfacts">0.0</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Line Real Loss</div>
+                    <div class="metric-value text-red" id="m_ploss">0.0</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Line Reac. Loss</div>
+                    <div class="metric-value text-red" id="m_qloss">0.0</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Source Total (S)</div>
+                    <div class="metric-value" id="m_stotal">0.0</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Source PF</div>
+                    <div class="metric-value text-green" id="m_spf">1.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">System Visualization</div>
+                <canvas id="sldCanvas" height="140"></canvas>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Real-time Response
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--accent-blue)"></div> Voltage</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--accent-yellow)"></div> Q Injection</div>
+                    </div>
+                </div>
+                <canvas id="scopeCanvas" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+        <p>Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+    </footer>
+
+    <script>
+        // Constants & Config
+        const S_BASE = 100; // MVA
+        const V_BASE = 230; // kV
+        let usePU = true;
+        let isRunning = true;
+        
+        // System Params (p.u.)
+        const Vs = 1.0;
+        const R = 0.02;
+        const X = 0.12;
+
+        // Dynamic State
+        let V_bus = 1.0;
+        let Q_facts = 0;
+        let P_load = 200; // MW
+        let Q_load = 100; // MVAR
+        let V_ref = 1.0;
+        let device = "STATCOM";
+        let fault = false;
+        let faultTicks = 0;
+
+        // History for plot
+        const historySize = 300;
+        let hV = new Array(historySize).fill(1);
+        let hQ = new Array(historySize).fill(0);
+
+        // DOM
+        const vRead = document.getElementById('m_vbus');
+        const qRead = document.getElementById('m_qfacts');
+        const plRead = document.getElementById('m_ploss');
+        const qlRead = document.getElementById('m_qloss');
+        const sRead = document.getElementById('m_stotal');
+        const pfRead = document.getElementById('m_spf');
+
+        const sldCanvas = document.getElementById('sldCanvas');
+        const scopeCanvas = document.getElementById('scopeCanvas');
+        const sldCtx = sldCanvas.getContext('2d');
+        const scopeCtx = scopeCanvas.getContext('2d');
+
+        // Setup UI Listeners
+        document.getElementById('unitPU').onclick = () => setUnit(true);
+        document.getElementById('unitAbs').onclick = () => setUnit(false);
+        document.getElementById('deviceSelect').onchange = (e) => device = e.target.value;
+        document.getElementById('vrefSlider').oninput = updateInputs;
+        document.getElementById('ploadSlider').oninput = updateInputs;
+        document.getElementById('qloadSlider').oninput = updateInputs;
+        document.getElementById('btnFault').onclick = () => { fault = true; faultTicks = 15; };
+        document.getElementById('btnPause').onclick = (e) => {
+            isRunning = !isRunning;
+            e.target.textContent = isRunning ? "Pause Simulation" : "Resume Simulation";
+        };
+
+        function setUnit(pu) {
+            usePU = pu;
+            document.getElementById('unitPU').classList.toggle('active', pu);
+            document.getElementById('unitAbs').classList.toggle('active', !pu);
+            updateInputs();
+        }
+
+        function updateInputs() {
+            V_ref = parseFloat(document.getElementById('vrefSlider').value);
+            P_load = parseFloat(document.getElementById('ploadSlider').value);
+            Q_load = parseFloat(document.getElementById('qloadSlider').value);
+            
+            document.getElementById('vrefVal').textContent = usePU ? V_ref.toFixed(2) + " p.u." : (V_ref * V_BASE).toFixed(1) + " kV";
+            document.getElementById('ploadVal').textContent = P_load + " MW";
+            document.getElementById('qloadVal').textContent = Q_load + " MVAR";
+        }
+
+        function updatePhysics() {
+            if (!isRunning) return;
+
+            if (faultTicks > 0) {
+                faultTicks--;
+                V_bus = 0.1 + Math.random() * 0.1;
+                Q_facts = 0;
+            } else {
+                fault = false;
+                const p = P_load / S_BASE;
+                const q_l = Q_load / S_BASE;
+                const err = V_ref - V_bus;
+
+                if (device === "NONE") {
+                    Q_facts = 0;
+                } else if (device === "SVC") {
+                    // SVC Q varies with V^2
+                    let B = 15 * err; // Gain
+                    B = Math.max(-1.5, Math.min(2.0, B));
+                    Q_facts = B * (V_bus * V_bus) * S_BASE;
+                } else {
+                    // STATCOM Q varies with V
+                    let I = 20 * err; // Gain
+                    I = Math.max(-1.5, Math.min(2.0, I));
+                    Q_facts = I * V_bus * S_BASE;
+                }
+
+                // Voltage solving (simplified iterative approach for stability)
+                let q_net = q_l - (Q_facts / S_BASE);
+                let V_drop = (p * R + q_net * X) / Vs;
+                let V_target = Vs - V_drop;
+                V_bus += (V_target - V_bus) * 0.15;
+            }
+
+            // Calculations for metrics
+            const p_pu = P_load / S_BASE;
+            const q_net_pu = (Q_load - Q_facts) / S_BASE;
+            const I_line = Math.sqrt((p_pu**2 + q_net_pu**2)) / Math.max(V_bus, 0.1);
+            
+            const p_loss = (I_line**2 * R) * S_BASE;
+            const q_loss = (I_line**2 * X) * S_BASE;
+            const p_src = P_load + p_loss;
+            const q_src = (Q_load - Q_facts) + q_loss;
+            const s_src = Math.sqrt(p_src**2 + q_src**2);
+            const pf = p_src / Math.max(s_src, 0.001);
+
+            hV.push(V_bus); hV.shift();
+            hQ.push(Q_facts); hQ.shift();
+
+            displayMetrics(p_loss, q_loss, s_src, pf);
+        }
+
+        function displayMetrics(pl, ql, s, pf) {
+            vRead.textContent = usePU ? V_bus.toFixed(3) + " pu" : (V_bus * V_BASE).toFixed(1) + " kV";
+            qRead.textContent = Q_facts.toFixed(1) + " MVAR";
+            plRead.textContent = pl.toFixed(2) + " MW";
+            qlRead.textContent = ql.toFixed(2) + " MVAR";
+            sRead.textContent = s.toFixed(1) + " MVA";
+            pfRead.textContent = pf.toFixed(2);
+            pfRead.className = "metric-value " + (pf > 0.95 ? "text-green" : "text-yellow");
+        }
+
+        function drawSLD() {
+            const w = sldCanvas.width = sldCanvas.clientWidth;
+            const h = sldCanvas.height = sldCanvas.clientHeight;
+            sldCtx.clearRect(0,0,w,h);
+
+            const y = h/2;
+            const b1 = 80, b2 = w - 80;
+
+            // Line
+            sldCtx.strokeStyle = fault ? '#ef4444' : '#cbd5e1';
+            sldCtx.lineWidth = 3;
+            sldCtx.beginPath(); sldCtx.moveTo(b1, y); sldCtx.lineTo(b2, y); sldCtx.stroke();
+
+            // Generator
+            sldCtx.fillStyle = '#0284c7';
+            sldCtx.beginPath(); sldCtx.arc(b1 - 30, y, 15, 0, 7); sldCtx.fill();
+            sldCtx.fillStyle = "white"; sldCtx.fillText("G", b1-35, y+4);
+
+            // Buses
+            sldCtx.strokeStyle = "#1e293b";
+            sldCtx.lineWidth = 4;
+            sldCtx.beginPath(); sldCtx.moveTo(b1, y-30); sldCtx.lineTo(b1, y+30); sldCtx.stroke();
+            sldCtx.beginPath(); sldCtx.moveTo(b2, y-30); sldCtx.lineTo(b2, y+30); sldCtx.stroke();
+
+            // Device
+            if(device !== "NONE") {
+                sldCtx.strokeStyle = "#ca8a04";
+                sldCtx.beginPath(); sldCtx.moveTo(b2, y); sldCtx.lineTo(b2, y+40); sldCtx.stroke();
+                sldCtx.strokeRect(b2-25, y+40, 50, 20);
+                sldCtx.fillStyle = "#ca8a04";
+                sldCtx.font = "bold 9px Arial";
+                sldCtx.fillText(device, b2-20, y+53);
+            }
+        }
+
+        function drawScope() {
+            const w = scopeCanvas.width = scopeCanvas.clientWidth;
+            const h = scopeCanvas.height = scopeCanvas.clientHeight;
+            scopeCtx.clearRect(0,0,w,h);
+
+            const step = w / historySize;
+
+            // V Plot
+            scopeCtx.strokeStyle = "#0284c7";
+            scopeCtx.lineWidth = 2;
+            scopeCtx.beginPath();
+            hV.forEach((v, i) => {
+                let y = h - ((v - 0.5) * h);
+                if(i===0) scopeCtx.moveTo(0, y); else scopeCtx.lineTo(i*step, y);
+            });
+            scopeCtx.stroke();
+
+            // Q Plot
+            scopeCtx.strokeStyle = "#ca8a04";
+            scopeCtx.lineWidth = 1.5;
+            scopeCtx.setLineDash([4, 2]);
+            scopeCtx.beginPath();
+            hQ.forEach((q, i) => {
+                let y = h - ((q + 100) / 400 * h);
+                if(i===0) scopeCtx.moveTo(0, y); else scopeCtx.lineTo(i*step, y);
+            });
+            scopeCtx.stroke();
+            scopeCtx.setLineDash([]);
+        }
+
+        function loop() {
+            updatePhysics();
+            drawSLD();
+            drawScope();
+            requestAnimationFrame(loop);
+        }
+
+        updateInputs();
+        loop();
+    </script>
+</body>
+</html>
