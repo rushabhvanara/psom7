@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>FACTS Virtual Lab — SVC & STATCOM Voltage Control</title>
+  <style>
+    :root {
+      --navy: #071a33;
+      --navy2: #0d294d;
+      --blue: #0877d1;
+      --cyan: #08b6d4;
+      --green: #10a765;
+      --lime: #7bdc5c;
+      --orange: #f59e0b;
+      --red: #e53935;
+      --purple: #7856d6;
+      --bg: #eef3f8;
+      --card: #fff;
+      --line: #d8e1eb;
+      --text: #172033;
+      --muted: #64748b;
+      --shadow: 0 10px 30px rgba(7, 26, 51, .10);
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 10% 10%, rgba(8, 119, 209, .07), transparent 28%), radial-gradient(circle at 90% 20%, rgba(16, 167, 101, .05), transparent 25%), var(--bg);
+      color: var(--text);
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    header {
+      color: white;
+      background: linear-gradient(125deg, #061426 0%, #0a2d57 52%, #0877d1 100%);
+      padding: 30px 4% 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header:before,
+    header:after {
+      content: "";
+      position: absolute;
+      border: 1px solid rgba(255, 255, 255, .09);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    header:before {
+      width: 520px;
+      height: 520px;
+      right: -160px;
+      top: -350px;
+    }
+
+    header:after {
+      width: 330px;
+      height: 330px;
+      left: -170px;
+      bottom: -280px;
+    }
+
+    .home {
+      position: absolute;
+      top: 18px;
+      left: 22px;
+      color: #fff;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, .35);
+      padding: 7px 13px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      z-index: 3;
+    }
+
+    .home:hover {
+      background: rgba(255, 255, 255, .12)
+    }
+
+    .header-inner {
+      max-width: 1500px;
+      margin: auto;
+      padding-top: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(27px, 3.4vw, 45px);
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      margin-top: 9px;
+      max-width: 1000px;
+      color: #dcecff;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .chip {
+      padding: 6px 11px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, .11);
+      border: 1px solid rgba(255, 255, 255, .18);
+      font-size: 11px;
+    }
+
+    main {
+      max-width: 1500px;
+      margin: auto;
+      padding: 22px 3%;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      padding: 18px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 15px;
+      color: var(--navy);
+      font-size: 18px;
+    }
+
+    .card h3 {
+      color: var(--blue);
+      font-size: 13px;
+      margin: 18px 0 9px;
+    }
+
+    .control {
+      margin: 16px 0
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 750;
+      margin-bottom: 7px;
+    }
+
+    .val {
+      color: var(--blue);
+      font-family: ui-monospace, monospace;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 17px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 13px;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    button:hover {
+      filter: brightness(.94)
+    }
+
+    button.secondary {
+      background: #e9f0f7;
+      color: var(--navy);
+    }
+
+    button.active {
+      background: var(--green);
+    }
+
+    .mode-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px;
+    }
+
+    .mode-buttons button {
+      font-size: 11px;
+      padding: 9px 5px;
+    }
+
+    .small {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .metric {
+      min-height: 93px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 13px;
+      box-shadow: 0 5px 17px rgba(7, 26, 51, .06);
+    }
+
+    .metric-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .65px;
+    }
+
+    .metric-value {
+      margin-top: 6px;
+      font-size: 22px;
+      font-weight: 850;
+      color: var(--navy);
+    }
+
+    .metric-unit {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .status {
+      display: inline-flex;
+      padding: 4px 7px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 800;
+      background: #e9f8ef;
+      color: #087a43;
+      margin-top: 6px;
+    }
+
+    .svg-wrap {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: linear-gradient(#f9fcff, #f4f8fc);
+    }
+
+    svg {
+      width: 100%;
+      display: block;
+    }
+
+    .flow-dot {
+      animation: flow 1.4s linear infinite;
+    }
+
+    @keyframes flow {
+      from {
+        stroke-dashoffset: 24
+      }
+
+      to {
+        stroke-dashoffset: 0
+      }
+    }
+
+    .pulse {
+      animation: pulse 1.7s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: .65
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+
+    .graph-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 330px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 9px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .math {
+      background: #f7fafc;
+      border-left: 4px solid var(--blue);
+      border-radius: 7px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 9px 0;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .table th,
+    .table td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 7px;
+    }
+
+    .table th {
+      text-align: left;
+      background: #f4f7fb;
+      color: var(--navy);
+    }
+
+    .table td:not(:first-child) {
+      text-align: right;
+      font-family: ui-monospace, monospace;
+    }
+
+    .gauge-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .gauge {
+      text-align: center;
+    }
+
+    .gauge svg {
+      max-height: 180px;
+    }
+
+    .observation {
+      color: #526176;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    footer {
+      margin-top: 20px;
+      background: #06162c;
+      color: #d7e6f8;
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    footer .heart {
+      color: #ff5571
+    }
+
+    footer a {
+      color: #80caff;
+      text-decoration: none;
+    }
+
+    @media(max-width:1200px) {
+      .results {
+        grid-template-columns: repeat(3, 1fr)
+      }
+    }
+
+    @media(max-width:950px) {
+      .layout {
+        grid-template-columns: 1fr
+      }
+
+      .graph-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media(max-width:620px) {
+      .results {
+        grid-template-columns: repeat(2, 1fr)
+      }
+
+      .gauge-row {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header> <a class="home" href="https://rushabhvanara.github.io" target="_blank">⌂ Home</a>
+    <div class="header-inner">
+      <h1>FACTS-Based Transmission Voltage Control</h1>
+      <div class="subtitle"> Interactive virtual laboratory for investigating voltage regulation using shunt FACTS
+        controllers — Static VAR Compensator (SVC) and Static Synchronous Compensator (STATCOM). </div>
+      
+    </div>
+  </header>
+  <main>
+    <div class="layout">
+      <!-- ===================================================== CONTROL PANEL ===================================================== -->
+      <aside>
+        <div class="card">
+          <h2>Experiment Controls</h2>
+          <div class="control"> <label> <span>Compensation mode</span> </label>
+            <div class="mode-buttons"> <button id="btnNone" onclick="setDevice('none')">None</button> <button
+                id="btnSVC" onclick="setDevice('svc')">SVC</button> <button id="btnSTATCOM"
+                onclick="setDevice('statcom')">STATCOM</button> </div>
+          </div>
+          <div class="control"> <label> <span>Source voltage V<sub>s</sub></span> <span class="val" id="vsV">1.00
+                pu</span> </label> <input id="vs" type="range" min=".85" max="1.10" step=".01" value="1"> </div>
+          <div class="control"> <label> <span>Line reactance X</span> <span class="val" id="xV">0.40 pu</span> </label>
+            <input id="x" type="range" min=".15" max=".90" step=".01" value=".40"> </div>
+          <div class="control"> <label> <span>Real load P<sub>L</sub></span> <span class="val" id="pV">0.80 pu</span>
+            </label> <input id="p" type="range" min=".20" max="1.25" step=".01" value=".80"> </div>
+          <div class="control"> <label> <span>Reactive load Q<sub>L</sub></span> <span class="val" id="qV">0.30
+                pu</span> </label> <input id="q" type="range" min="-.10" max=".90" step=".01" value=".30"> </div>
+          <div id="svcControls">
+            <div class="control"> <label> <span>SVC susceptance B<sub>SVC</sub></span> <span class="val" id="bV">0.00
+                  pu</span> </label> <input id="b" type="range" min="-.90" max=".90" step=".01" value=".35"> </div>
+          </div>
+          <div id="statcomControls" style="display:none">
+            <div class="control"> <label> <span>STATCOM converter voltage V<sub>c</sub></span> <span class="val"
+                  id="vcV">1.05 pu</span> </label> <input id="vc" type="range" min=".80" max="1.20" step=".01"
+                value="1.05"> </div>
+            <div class="control"> <label> <span>STATCOM current limit</span> <span class="val" id="ilimV">0.80 pu</span>
+              </label> <input id="ilim" type="range" min=".20" max="1.20" step=".01" value=".80"> </div>
+          </div>
+          <div class="buttons"> <button onclick="simulate()">▶ Run simulation</button> <button class="secondary"
+              onclick="resetAll()">↺ Reset</button> <button class="secondary" onclick="toggleAnimation()" id="animBtn">
+              ⏸ Pause animation </button> </div>
+        </div>
+        <div class="card">
+          <h2>Quick Scenarios</h2>
+          <div class="buttons"> <button class="secondary" onclick="scenario('normal')">Normal Load</button> <button
+              class="secondary" onclick="scenario('heavy')">Heavy Load</button> <button class="secondary"
+              onclick="scenario('lowv')">Low V<sub>s</sub></button> <button class="secondary"
+              onclick="scenario('weak')">Weak Line</button> </div>
+          <p class="small"> Use the scenarios to compare how voltage support requirements change as the transmission
+            system becomes stressed. </p>
+        </div>
+        <div class="card">
+          <h2>Learning Objective</h2>
+          <p class="small"> Investigate how reactive-power compensation affects receiving-end voltage in a transmission
+            system and compare the voltage-support characteristics of SVC and STATCOM. </p>
+          <h3>Suggested Procedure</h3>
+          <ol class="small">
+            <li>Run the system without compensation.</li>
+            <li>Increase Q<sub>L</sub> and observe voltage depression.</li>
+            <li>Apply SVC compensation.</li>
+            <li>Replace SVC with STATCOM.</li>
+            <li>Compare Q support and V<sub>r</sub>.</li>
+            <li>Increase X to represent a weak transmission corridor.</li>
+          </ol>
+        </div>
+      </aside>
+      <!-- ===================================================== MAIN SIMULATION ===================================================== -->
+      <section>
+        <div class="results">
+          <div class="metric">
+            <div class="metric-label">Receiving voltage</div>
+            <div class="metric-value" id="mVr">—</div>
+            <div class="metric-unit">pu</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Voltage regulation</div>
+            <div class="metric-value" id="mReg">—</div>
+            <div class="metric-unit">%</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">FACTS Q support</div>
+            <div class="metric-value" id="mQ">—</div>
+            <div class="metric-unit">pu</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Load-bus angle</div>
+            <div class="metric-value" id="mDelta">—</div>
+            <div class="metric-unit">degrees</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Line current</div>
+            <div class="metric-value" id="mI">—</div>
+            <div class="metric-unit">pu</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">System state</div>
+            <div class="metric-value" id="mState">—</div>
+            <div class="metric-unit"> <span class="status" id="stateBadge">—</span> </div>
+          </div>
+        </div>
+        <!-- ===================================================== ADVANCED SVG SINGLE LINE ===================================================== -->
+        <div class="card">
+          <h2>Interactive Transmission Network</h2>
+          <div class="svg-wrap">
+
+            <svg id="networkSVG" viewBox="0 0 1400 620" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="stationGrad" x1="0" x2="1">
+                  <stop offset="0" stop-color="#071a33" />
+                  <stop offset="1" stop-color="#0c5595" />
+                </linearGradient>
+                <linearGradient id="factsGrad" x1="0" x2="1">
+                  <stop offset="0" stop-color="#0c8f62" />
+                  <stop offset="1" stop-color="#16c17e" />
+                </linearGradient>
+                <filter id="svgShadow">
+                  <feDropShadow dx="0" dy="4" stdDeviation="5" flood-opacity=".18" />
+                </filter>
+
+                <marker id="arrowPower" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto">
+                  <path d="M0 0 L10 5 L0 10 Z" fill="#0877d1" />
+                </marker>
+
+                <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto">
+                  <path d="M0 0 L10 5 L0 10 Z" fill="#10a765" />
+                </marker>
+              </defs> <!-- Background -->
+              <rect width="1400" height="620" fill="#f8fbfe" /> <!-- Heading -->
+
+              <text x="700" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="#071a33">
+                Three-Phase Transmission System — Shunt FACTS Voltage Control
+              </text>
+
+              <text x="700" y="61" text-anchor="middle" font-size="12" fill="#64748b">
+                Single-line representation with dynamic reactive-power compensation
+              </text>
+              <!-- ================= SOURCE ================= -->
+              <g filter="url(#svgShadow)">
+
+                <rect x="45" y="180" width="245" height="180" rx="16" fill="url(#stationGrad)" />
+
+                <text x="167" y="216" text-anchor="middle" fill="#fff" font-size="17" font-weight="800">
+                  GENERATOR / GRID
+                </text>
+
+                <circle cx="167" cy="278" r="45" fill="#eaf5ff" stroke="#65b8f5" stroke-width="3" />
+                <!-- generator coils -->
+
+                <path d=" M138 280 C145 250 155 250 162 280 C169 310 179 310 186 280 C193 250 203 250 210 280"
+                  fill="none" stroke="#0877d1" stroke-width="4" />
+
+                <text x="167" y="337" text-anchor="middle" fill="#d9edff" font-size="13">
+                  V<tspan baseline-shift="sub">s</tspan> ∠ 0°
+                </text>
+              </g> <!-- ================= TRANSMISSION TOWER ================= --> <!-- Main transmission conductor -->
+
+              <line x1="290" y1="270" x2="1085" y2="270" stroke="#172033" stroke-width="7" />
+              <!-- animated power flow -->
+
+              <line x1="315" y1="270" x2="1050" y2="270" stroke="#0877d1" stroke-width="3" stroke-dasharray="10 14"
+                class="flow-dot" marker-end="url(#arrowPower)" />
+              <!-- towers -->
+              <g stroke="#8a99a9" stroke-width="3" fill="none">
+                <path d="M360 270 L360 135 M320 175 L400 175 M335 155 L385 155 M345 140 L375 140" />
+                <path d="M620 270 L620 135 M580 175 L660 175 M595 155 L645 155 M605 140 L635 140" />
+                <path d="M880 270 L880 135 M840 175 L920 175 M855 155 L905 155 M865 140 L895 140" />
+              </g> <!-- line impedance -->
+              <g>
+                <rect x="510" y="215" width="230" height="62" rx="10" fill="#fff" stroke="#bfd0e2"
+                  filter="url(#svgShadow)" />
+
+                <text x="625" y="237" text-anchor="middle" font-size="12" fill="#64748b">
+                  Transmission corridor
+                </text>
+
+                <text x="625" y="258" text-anchor="middle" font-size="17" font-weight="800" fill="#0877d1">
+                  Z ≈ jX
+                </text>
+
+                <text id="svgX" x="625" y="270" text-anchor="middle" font-size="10" fill="#64748b">
+                  X = 0.40 pu
+                </text>
+              </g>
+              <!-- ================= RECEIVING BUS ================= -->
+              <g filter="url(#svgShadow)">
+
+                <rect x="1085" y="175" width="270" height="190" rx="16" fill="#fff" stroke="#7856d6" stroke-width="3" />
+
+                <text x="1220" y="208" text-anchor="middle" font-size="17" font-weight="800" fill="#071a33">
+                  RECEIVING-END BUS
+                </text>
+
+                <line x1="1220" y1="225" x2="1220" y2="305" stroke="#7856d6" stroke-width="13" stroke-linecap="round" />
+
+                <text x="1220" y="333" text-anchor="middle" font-size="14" fill="#7856d6" font-weight="700">
+                  V<tspan baseline-shift="sub">r</tspan> =
+                  <tspan id="svgVr">1.00 pu</tspan>
+                </text>
+                <!-- load symbol -->
+
+                <path d="M1165 345 L1275 345" stroke="#e44b4b" stroke-width="4" />
+
+                <path d="M1178 345 L1190 375 L1202 345 L1214 375 L1226 345 L1238 375 L1250 345 L1262 375" fill="none"
+                  stroke="#e44b4b" stroke-width="3" />
+
+                <text x="1220" y="400" text-anchor="middle" font-size="12" fill="#e44b4b">
+                  P<tspan baseline-shift="sub">L</tspan> + jQ<tspan baseline-shift="sub">L</tspan>
+                </text>
+              </g> <!-- ================= FACTS BRANCH ================= -->
+
+              <line x1="880" y1="270" x2="880" y2="470" stroke="#10a765" stroke-width="5" />
+
+              <circle cx="880" cy="270" r="9" fill="#10a765" class="pulse" />
+              <!-- FACTS cabinet -->
+              <g filter="url(#svgShadow)">
+
+                <rect x="655" y="465" width="450" height="125" rx="15" fill="url(#factsGrad)" />
+
+                <text id="svgFactsTitle" x="880" y="495" text-anchor="middle" font-size="20" font-weight="850"
+                  fill="#fff">
+                  SVC
+                </text>
+
+                <text id="svgFactsSub" x="880" y="517" text-anchor="middle" font-size="12" fill="#dcfff1">
+                  STATIC VAR COMPENSATOR
+                </text>
+                <!-- SVC internal icon -->
+                <g id="svcIcon">
+
+                  <line x1="735" y1="535" x2="785" y2="535" stroke="#fff" stroke-width="2" />
+                  <!-- capacitor plates -->
+
+                  <line x1="755" y1="525" x2="755" y2="545" stroke="#fff" stroke-width="4" />
+
+                  <line x1="765" y1="525" x2="765" y2="545" stroke="#fff" stroke-width="4" />
+                  <!-- reactor -->
+
+                  <path d="M800 535 C810 520 820 520 830 535 C840 550 850 550 860 535 C870 520 880 520 890 535"
+                    fill="none" stroke="#fff" stroke-width="3" />
+
+                  <text x="820" y="572" text-anchor="middle" fill="#fff" font-size="10">
+                    TCR / TSC
+                  </text>
+                </g> <!-- STATCOM icon -->
+                <g id="statcomIcon" style="display:none">
+
+                  <rect x="755" y="530" width="105" height="43" rx="5" fill="rgba(255,255,255,.14)" stroke="#fff" />
+
+                  <path d="M770 552 L790 535 L810 552 L830 535 L850 552" fill="none" stroke="#fff" stroke-width="2" />
+
+                  <text x="807" y="572" text-anchor="middle" fill="#fff" font-size="10">
+                    VSC
+                  </text>
+
+                  <line x1="875" y1="551" x2="925" y2="551" stroke="#fff" stroke-width="3" />
+
+                  <rect x="925" y="530" width="80" height="43" rx="5" fill="rgba(255,255,255,.14)" stroke="#fff" />
+
+                  <text x="965" y="557" text-anchor="middle" fill="#fff" font-size="11">
+                    DC LINK
+                  </text>
+                </g>
+
+                <text id="svgQ" x="1000" y="550" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">
+                  Q = +0.00 pu
+                </text>
+              </g> <!-- labels -->
+
+              <text x="310" y="305" font-size="11" fill="#0877d1">
+                P + jQ
+              </text>
+
+              <text x="900" y="315" font-size="11" fill="#10a765">
+                Reactive support
+              </text>
+            </svg>
+          </div>
+        </div>
+        <!-- ===================================================== PHASOR DIAGRAM ===================================================== -->
+        <div class="card">
+          <h2>Publication-Style Phasor Diagram</h2>
+          <div class="svg-wrap">
+
+            <svg id="phasor" viewBox="0 0 1000 650" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+
+                <marker id="blueArrow" markerWidth="13" markerHeight="13" refX="11" refY="6" orient="auto">
+                  <path d="M0 0 L12 6 L0 12 Z" fill="#0877d1" />
+                </marker>
+
+                <marker id="purpleArrow" markerWidth="13" markerHeight="13" refX="11" refY="6" orient="auto">
+                  <path d="M0 0 L12 6 L0 12 Z" fill="#7856d6" />
+                </marker>
+
+                <marker id="greenArrow" markerWidth="13" markerHeight="13" refX="11" refY="6" orient="auto">
+                  <path d="M0 0 L12 6 L0 12 Z" fill="#10a765" />
+                </marker>
+
+                <marker id="redArrow" markerWidth="13" markerHeight="13" refX="11" refY="6" orient="auto">
+                  <path d="M0 0 L12 6 L0 12 Z" fill="#e53935" />
+                </marker>
+                <filter id="phShadow">
+                  <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity=".14" />
+                </filter>
+              </defs>
+              <rect width="1000" height="650" fill="#fbfdff" />
+
+              <text x="500" y="35" text-anchor="middle" font-size="21" font-weight="800" fill="#071a33">
+                Receiving-End Voltage Phasor Construction
+              </text>
+
+              <text x="500" y="58" text-anchor="middle" font-size="12" fill="#64748b">
+                Vector relation: Vₛ = Vᵣ + jXI — angles and magnitudes calculated from the simulated operating point
+              </text>
+              <!-- coordinate system -->
+
+              <line x1="100" y1="500" x2="910" y2="500" stroke="#8493a5" stroke-width="1.5" />
+
+              <line x1="100" y1="560" x2="100" y2="90" stroke="#8493a5" stroke-width="1.5" />
+
+              <text x="915" y="522" font-size="12" fill="#64748b">
+                Real axis
+              </text>
+
+              <text x="72" y="92" font-size="12" fill="#64748b">
+                j-axis
+              </text>
+              <!-- grid -->
+              <g stroke="#e7edf3" stroke-width="1">
+                <line x1="200" y1="500" x2="200" y2="120" />
+                <line x1="300" y1="500" x2="300" y2="120" />
+                <line x1="400" y1="500" x2="400" y2="120" />
+                <line x1="500" y1="500" x2="500" y2="120" />
+                <line x1="600" y1="500" x2="600" y2="120" />
+                <line x1="700" y1="500" x2="700" y2="120" />
+                <line x1="800" y1="500" x2="800" y2="120" />
+                <line x1="100" y1="420" x2="900" y2="420" />
+                <line x1="100" y1="340" x2="900" y2="340" />
+                <line x1="100" y1="260" x2="900" y2="260" />
+                <line x1="100" y1="180" x2="900" y2="180" />
+              </g> <!-- reference circles -->
+
+              <circle cx="100" cy="500" r="270" fill="none" stroke="#dfe7ef" stroke-dasharray="5 7" />
+
+              <circle cx="100" cy="500" r="180" fill="none" stroke="#e6edf4" stroke-dasharray="5 7" />
+              <!-- Vr vector -->
+
+              <line id="vrVector" x1="100" y1="500" x2="520" y2="500" stroke="#7856d6" stroke-width="7"
+                marker-end="url(#purpleArrow)" />
+
+              <text id="vrLabel" x="530" y="490" font-size="15" font-weight="800" fill="#7856d6">
+                Vᵣ
+              </text>
+              <!-- jXI vector -->
+
+              <line id="jxVector" x1="520" y1="500" x2="520" y2="380" stroke="#10a765" stroke-width="7"
+                marker-end="url(#greenArrow)" />
+
+              <text id="jxLabel" x="535" y="375" font-size="15" font-weight="800" fill="#10a765">
+                jXI
+              </text>
+              <!-- Vs resultant -->
+
+              <line id="vsVector" x1="100" y1="500" x2="520" y2="380" stroke="#0877d1" stroke-width="7"
+                marker-end="url(#blueArrow)" />
+
+              <text id="vsLabel" x="525" y="355" font-size="15" font-weight="800" fill="#0877d1">
+                Vₛ
+              </text>
+              <!-- current vector -->
+
+              <line id="iVector" x1="100" y1="500" x2="320" y2="440" stroke="#e53935" stroke-width="5"
+                marker-end="url(#redArrow)" />
+
+              <text id="iLabel" x="330" y="435" font-size="15" font-weight="800" fill="#e53935">
+                I
+              </text>
+              <!-- delta angle -->
+
+              <path id="deltaArc" d="M 235 500 A 135 135 0 0 0 230 470" fill="none" stroke="#f59e0b" stroke-width="3" />
+
+              <text id="deltaLabel" x="230" y="465" font-size="15" font-weight="800" fill="#b45309">
+                δ
+              </text>
+              <!-- phi -->
+
+              <path id="phiArc" d="M 195 500 A 95 95 0 0 0 192 485" fill="none" stroke="#e53935" stroke-width="2" />
+
+              <text id="phiLabel" x="185" y="480" font-size="13" font-weight="700" fill="#e53935">
+                φ
+              </text>
+              <!-- construction -->
+
+              <line id="construction" x1="520" y1="380" x2="520" y2="500" stroke="#10a765" stroke-width="1.5"
+                stroke-dasharray="5 5" />
+              <!-- data box -->
+              <g filter="url(#phShadow)">
+
+                <rect x="625" y="100" width="310" height="175" rx="13" fill="#fff" stroke="#d7e2ed" />
+
+                <text x="650" y="130" font-size="14" font-weight="800" fill="#071a33">
+                  PHASOR DATA
+                </text>
+
+                <text x="650" y="157" font-size="12" fill="#64748b">
+                  Vₛ magnitude
+                </text>
+
+                <text id="phVs" x="900" y="157" text-anchor="end" font-size="12" font-weight="800" fill="#0877d1">
+                  1.00 pu
+                </text>
+
+                <text x="650" y="182" font-size="12" fill="#64748b">
+                  Vᵣ magnitude
+                </text>
+
+                <text id="phVr" x="900" y="182" text-anchor="end" font-size="12" font-weight="800" fill="#7856d6">
+                  1.00 pu
+                </text>
+
+                <text x="650" y="207" font-size="12" fill="#64748b">
+                  Line current
+                </text>
+
+                <text id="phI" x="900" y="207" text-anchor="end" font-size="12" font-weight="800" fill="#e53935">
+                  0.00 pu
+                </text>
+
+                <text x="650" y="232" font-size="12" fill="#64748b">
+                  Power angle δ
+                </text>
+
+                <text id="phDelta" x="900" y="232" text-anchor="end" font-size="12" font-weight="800" fill="#b45309">
+                  0°
+                </text>
+
+                <text x="650" y="257" font-size="12" fill="#64748b">
+                  Current angle φ
+                </text>
+
+                <text id="phPhi" x="900" y="257" text-anchor="end" font-size="12" font-weight="800" fill="#e53935">
+                  0°
+                </text>
+              </g> <!-- vector legend -->
+              <g transform="translate(625 310)">
+
+                <rect width="310" height="150" rx="12" fill="#fff" stroke="#d7e2ed" />
+
+                <text x="20" y="28" font-size="13" font-weight="800" fill="#071a33">
+                  VECTOR LEGEND
+                </text>
+
+                <line x1="20" y1="53" x2="65" y2="53" stroke="#7856d6" stroke-width="5" />
+                <text x="78" y="57" font-size="11" fill="#526176">Receiving voltage Vᵣ</text>
+
+                <line x1="20" y1="78" x2="65" y2="78" stroke="#10a765" stroke-width="5" />
+                <text x="78" y="82" font-size="11" fill="#526176">Reactive drop jXI</text>
+
+                <line x1="20" y1="103" x2="65" y2="103" stroke="#0877d1" stroke-width="5" />
+                <text x="78" y="107" font-size="11" fill="#526176">Sending voltage Vₛ</text>
+
+                <line x1="20" y1="128" x2="65" y2="128" stroke="#e53935" stroke-width="5" />
+                <text x="78" y="132" font-size="11" fill="#526176">Line current I</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <!-- ===================================================== GAUGES ===================================================== -->
+        <div class="card">
+          <h2>Live Voltage & Reactive-Power Indicators</h2>
+          <div class="gauge-row">
+            <div class="gauge"> <svg viewBox="0 0 300 190">
+
+                <path d="M45 150 A105 105 0 0 1 255 150" fill="none" stroke="#e4eaf0" stroke-width="24" />
+
+                <path id="voltageGauge" d="M45 150 A105 105 0 0 1 255 150" fill="none" stroke="#10a765"
+                  stroke-width="24" stroke-dasharray="330" stroke-dashoffset="110" stroke-linecap="round" />
+
+                <text x="150" y="125" text-anchor="middle" font-size="30" font-weight="850" fill="#071a33" id="gaugeV">
+                  1.00
+                </text>
+
+                <text x="150" y="148" text-anchor="middle" font-size="11" fill="#64748b">
+                  RECEIVING VOLTAGE
+                </text>
+
+                <text x="150" y="175" text-anchor="middle" font-size="10" fill="#64748b">
+                  0.80 — 1.20 pu
+                </text>
+              </svg> </div>
+            <div class="gauge"> <svg viewBox="0 0 300 190">
+
+                <path d="M45 150 A105 105 0 0 1 255 150" fill="none" stroke="#e4eaf0" stroke-width="24" />
+
+                <path id="qGauge" d="M45 150 A105 105 0 0 1 255 150" fill="none" stroke="#0877d1" stroke-width="24"
+                  stroke-dasharray="330" stroke-dashoffset="165" stroke-linecap="round" />
+
+                <text x="150" y="125" text-anchor="middle" font-size="30" font-weight="850" fill="#071a33" id="gaugeQ">
+                  0.00
+                </text>
+
+                <text x="150" y="148" text-anchor="middle" font-size="11" fill="#64748b">
+                  FACTS Q SUPPORT
+                </text>
+
+                <text x="150" y="175" text-anchor="middle" font-size="10" fill="#64748b">
+                  −1.0 — +1.0 pu
+                </text>
+              </svg> </div>
+          </div>
+        </div>
+        <!-- ===================================================== GRAPHS ===================================================== -->
+        <div class="graph-grid">
+          <div class="card">
+            <h2>Voltage Profile vs Reactive Loading</h2>
+
+            <canvas id="voltageGraph" width="850" height="430"></canvas>
+            <div class="legend"> <span><i class="dot" style="background:#dc2626"></i>Uncompensated</span> <span><i
+                  class="dot" style="background:#f59e0b"></i>SVC</span> <span><i class="dot"
+                  style="background:#0877d1"></i>STATCOM</span> <span><i class="dot"
+                  style="background:#10a765"></i>V<sub>ref</sub></span> </div>
+          </div>
+          <div class="card">
+            <h2>Reactive-Power Support</h2>
+
+            <canvas id="qGraph" width="850" height="430"></canvas>
+            <div class="legend"> <span><i class="dot" style="background:#7856d6"></i>Load Q</span> <span><i class="dot"
+                  style="background:#10a765"></i>FACTS Q</span> <span><i class="dot" style="background:#0877d1"></i>Net
+                Q</span> </div>
+          </div>
+        </div>
+        <!-- ===================================================== MATHML CALCULATIONS ===================================================== -->
+        <div class="card">
+          <h2>Live Mathematical Model & Calculations</h2>
+          <h3>1. Transmission-line power transfer</h3>
+          <div class="math"> <math display="block">
+              <msub>
+                <mi>P</mi>
+                <mi>r</mi>
+              </msub>
+              <mo>≈</mo>
+              <mfrac>
+                <msub>
+                  <mi>V</mi>
+                  <mi>s</mi>
+                </msub>
+                <msub>
+                  <mi>V</mi>
+                  <mi>r</mi>
+                </msub>
+                <mi>X</mi>
+              </mfrac>
+              <mi>sin</mi>
+              <mo>⁡</mo>
+              <mi>δ</mi>
+            </math> </div>
+          <h3>2. Receiving-end voltage approximation</h3>
+          <div class="math"> <math display="block">
+
+              <msub>
+                <mi>V</mi>
+                <mi>r</mi>
+              </msub>
+              <mo>≈</mo>
+              <msqrt>
+                <mrow>
+                  <msup>
+                    <msub>
+                      <mi>V</mi>
+                      <mi>s</mi>
+                    </msub>
+                    <mn>2</mn>
+                  </msup>
+
+                  <mo>−</mo>
+
+                  <mn>2</mn>
+                  <mi>X</mi>
+                  <msub>
+                    <mi>Q</mi>
+                    <mi>net</mi>
+                  </msub>
+                </mrow>
+              </msqrt>
+            </math> </div>
+          <h3>3. Net reactive power</h3>
+          <div class="math"> <math display="block">
+
+              <msub>
+                <mi>Q</mi>
+                <mi>net</mi>
+              </msub>
+              <mo>=</mo>
+              <msub>
+                <mi>Q</mi>
+                <mi>L</mi>
+              </msub>
+              <mo>−</mo>
+              <msub>
+                <mi>Q</mi>
+                <mi>FACTS</mi>
+              </msub>
+            </math> </div>
+          <h3>4. SVC model</h3>
+          <div class="math"> <math display="block">
+
+              <msub>
+                <mi>I</mi>
+                <mi>SVC</mi>
+              </msub>
+              <mo>=</mo>
+              <msub>
+                <mi>B</mi>
+                <mi>SVC</mi>
+              </msub>
+              <msub>
+                <mi>V</mi>
+                <mi>r</mi>
+              </msub>
+            </math> <br> <math display="block">
+
+              <msub>
+                <mi>Q</mi>
+                <mi>SVC</mi>
+              </msub>
+              <mo>=</mo>
+              <msub>
+                <mi>B</mi>
+                <mi>SVC</mi>
+              </msub>
+              <msup>
+                <msub>
+                  <mi>V</mi>
+                  <mi>r</mi>
+                </msub>
+                <mn>2</mn>
+              </msup>
+            </math> </div>
+          <h3>5. STATCOM model</h3>
+          <div class="math"> <math display="block">
+
+              <msub>
+                <mi>I</mi>
+                <mi>STATCOM</mi>
+              </msub>
+              <mo>≈</mo>
+              <mfrac>
+                <mrow>
+                  <msub>
+                    <mi>V</mi>
+                    <mi>c</mi>
+                  </msub>
+                  <mo>−</mo>
+                  <msub>
+                    <mi>V</mi>
+                    <mi>r</mi></sub>
+                </mrow>
+                <mi>X</mi>
+              </mfrac>
+            </math> <br> <math display="block">
+
+              <msub>
+                <mi>Q</mi>
+                <mi>STATCOM</mi>
+              </msub>
+              <mo>≈</mo>
+              <msub>
+                <mi>V</mi>
+                <mi>r</mi>
+              </msub>
+              <msub>
+                <mi>I</mi>
+                <mi>STATCOM</mi>
+              </msub>
+            </math> </div>
+          <h3>6. Voltage regulation</h3>
+          <div class="math"> <math display="block">
+
+              <mi>VR</mi>
+              <mo>=</mo>
+              <mfrac>
+                <mrow>
+                  <msub>
+                    <mi>V</mi>
+                    <mi>s</mi>
+                  </msub>
+                  <mo>−</mo>
+                  <msub>
+                    <mi>V</mi>
+                    <mi>r</mi>
+                  </msub>
+                </mrow>
+                <msub>
+                  <mi>V</mi>
+                  <mi>s</mi>
+                </msub>
+              </mfrac>
+              <mo>×</mo>
+              <mn>100</mn>
+              <mo>%</mo>
+            </math> </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Calculated quantity</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>V<sub>s</sub></td>
+                <td id="cVs">—</td>
+              </tr>
+              <tr>
+                <td>V<sub>r</sub></td>
+                <td id="cVr">—</td>
+              </tr>
+              <tr>
+                <td>X</td>
+                <td id="cX">—</td>
+              </tr>
+              <tr>
+                <td>P<sub>L</sub></td>
+                <td id="cP">—</td>
+              </tr>
+              <tr>
+                <td>Q<sub>L</sub></td>
+                <td id="cQL">—</td>
+              </tr>
+              <tr>
+                <td>Q<sub>FACTS</sub></td>
+                <td id="cQF">—</td>
+              </tr>
+              <tr>
+                <td>Q<sub>net</sub></td>
+                <td id="cQN">—</td>
+              </tr>
+              <tr>
+                <td>|I|</td>
+                <td id="cI">—</td>
+              </tr>
+              <tr>
+                <td>δ</td>
+                <td id="cDelta">—</td>
+              </tr>
+              <tr>
+                <td>Voltage regulation</td>
+                <td id="cReg">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- ===================================================== DEVICE COMPARISON ===================================================== -->
+        <div class="card">
+          <h2>SVC vs STATCOM — Engineering Comparison</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>SVC</th>
+                <th>STATCOM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Converter type</td>
+                <td>Thyristor controlled</td>
+                <td>Voltage-source converter</td>
+              </tr>
+              <tr>
+                <td>Reactive element</td>
+                <td>Variable susceptance</td>
+                <td>Converter voltage source</td>
+              </tr>
+              <tr>
+                <td>Shunt connection</td>
+                <td>Yes</td>
+                <td>Yes</td>
+              </tr>
+              <tr>
+                <td>Voltage control</td>
+                <td>Fast</td>
+                <td>Very fast</td>
+              </tr>
+              <tr>
+                <td>Low-voltage reactive current</td>
+                <td>Decreases with voltage</td>
+                <td>Can remain strongly controllable</td>
+              </tr>
+              <tr>
+                <td>Typical application</td>
+                <td>Voltage support / power factor</td>
+                <td>Dynamic voltage stabilization</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- ===================================================== OBSERVATION ===================================================== -->
+        <div class="card">
+          <h2>Virtual Laboratory Observation</h2>
+          <div class="observation">
+            <p> The receiving-end voltage is strongly influenced by transmission reactance and reactive loading.
+              Increasing Q<sub>L</sub> or X increases the voltage drop across the transmission corridor. </p>
+            <p> An SVC changes its effective shunt susceptance to inject or absorb reactive power. Its reactive-power
+              output is approximately proportional to V<sub>r</sub><sup>2</sup>. </p>
+            <p> A STATCOM regulates reactive current through a controllable converter voltage. The simulation therefore
+              illustrates why STATCOM-based compensation can provide strong voltage support during depressed-voltage
+              conditions. </p>
+          </div>
+        </div>
+      </section>
+      
+  </main>
+
+
+<div style="text-align: center;">
+   <h4>
+      <a href="https://rushabhvanara.github.io/psom7/index2.html" target="_blank" style="text-decoration: none;">
+         Go to simple version
+      </a>
+      <p></p>
+      <a href="https://rushabhvanara.github.io/psom6/index3.html" target="_blank" style="text-decoration: none;">
+         Go to live simulation of voltage control with fault dynamics version
+      </a>
+   </h4>
+</div>
+  <footer> Made with <span class="heart">❤️</span> by Rushabh Vanara<br> Electrical engineering department, Government
+    Polytechnic Junagadh<br> Reference: <a href="https://rushabhvanara.github.io/psom7/" target="_blank">
+      https://rushabhvanara.github.io/psom7/ </a> </footer>
+  <script> /* ========================================================== FACTS VIRTUAL LAB ENGINE ========================================================== */ let device = "svc"; let animationRunning = true; let animationFrame = null; /* ---------------------------------------------------------- Helpers ---------------------------------------------------------- */ const $ = id => document.getElementById(id); function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); } function rad(deg) { return deg * Math.PI / 180; } /* ---------------------------------------------------------- Device selection ---------------------------------------------------------- */ function setDevice(d) { device = d; $("btnNone").classList.toggle("active", d === "none"); $("btnSVC").classList.toggle("active", d === "svc"); $("btnSTATCOM").classList.toggle("active", d === "statcom"); $("svcControls").style.display = d === "svc" ? "block" : "none"; $("statcomControls").style.display = d === "statcom" ? "block" : "none"; updateSVGDevice(); simulate(); } /* ---------------------------------------------------------- Voltage solver ---------------------------------------------------------- */ function solve(vs, x, p, q) { let vr = vs; const b = Number($("b").value); const vc = Number($("vc").value); const ilim = Number($("ilim").value); let qfacts = 0; for (let k = 0; k < 100; k++) { if (device === "svc") { qfacts = b * vr * vr; } else if (device === "statcom") { let iq = (vc - vr) / Math.max(.05, x); iq = clamp(iq, -ilim, ilim); qfacts = vr * iq; } else { qfacts = 0; } let qnet = q - qfacts; /* Simplified AC transmission voltage model. A small P-related term represents active-current voltage depression while the dominant effect is reactive loading. */ let radicand = vs * vs - 2 * x * qnet - Math.pow(x * p / Math.max(vr, .3), 2); radicand = Math.max(.05, radicand); let target = Math.sqrt(radicand); /* Numerical damping */ vr = .72 * vr + .28 * target; vr = clamp(vr, .25, 1.30); } /* final compensation */ if (device === "svc") { qfacts = b * vr * vr; } else if (device === "statcom") { let iq = (vc - vr) / Math.max(.05, x); iq = clamp(iq, -ilim, ilim); qfacts = vr * iq; } else { qfacts = 0; } const qnet = q - qfacts; /* Estimate power angle from: P = Vs Vr / X sin(delta) */ let sinDelta = (p * x) / Math.max(.001, vs * vr); sinDelta = clamp(sinDelta, -.999, .999); let delta = Math.asin(sinDelta); /* Current magnitude from S/V */ let s = Math.sqrt(p * p + qnet * qnet); let current = s / Math.max(vr, .1); /* Current angle */ let phi = Math.atan2(qnet, p); return { vr, qfacts, qnet, delta, current, phi }; } /* ---------------------------------------------------------- Main simulation ---------------------------------------------------------- */ function simulate() { const vs = Number($("vs").value); const x = Number($("x").value); const p = Number($("p").value); const q = Number($("q").value); $("vsV").textContent = vs.toFixed(2) + " pu"; $("xV").textContent = x.toFixed(2) + " pu"; $("pV").textContent = p.toFixed(2) + " pu"; $("qV").textContent = q.toFixed(2) + " pu"; $("bV").textContent = Number($("b").value).toFixed(2) + " pu"; $("vcV").textContent = Number($("vc").value).toFixed(2) + " pu"; $("ilimV").textContent = Number($("ilim").value).toFixed(2) + " pu"; const r = solve(vs, x, p, q); const regulation = ((vs - r.vr) / vs) * 100; let state = "Healthy"; if (r.vr < .90) state = "Voltage low"; if (r.vr < .75) state = "Critical"; if (r.vr > 1.08) state = "Overvoltage"; $("mVr").textContent = r.vr.toFixed(3); $("mReg").textContent = regulation.toFixed(2); $("mQ").textContent = r.qfacts.toFixed(3); $("mDelta").textContent = (r.delta * 180 / Math.PI).toFixed(2); $("mI").textContent = r.current.toFixed(3); $("mState").textContent = state; $("stateBadge").textContent = state; if (state === "Healthy") { $("stateBadge").style.background = "#e9f8ef"; $("stateBadge").style.color = "#087a43"; } else if (state === "Overvoltage") { $("stateBadge").style.background = "#fff4dc"; $("stateBadge").style.color = "#a35b00"; } else { $("stateBadge").style.background = "#feeceb"; $("stateBadge").style.color = "#b42318"; } /* calculations */ $("cVs").textContent = vs.toFixed(4) + " pu"; $("cVr").textContent = r.vr.toFixed(4) + " pu"; $("cX").textContent = x.toFixed(4) + " pu"; $("cP").textContent = p.toFixed(4) + " pu"; $("cQL").textContent = q.toFixed(4) + " pu"; $("cQF").textContent = r.qfacts.toFixed(4) + " pu"; $("cQN").textContent = r.qnet.toFixed(4) + " pu"; $("cI").textContent = r.current.toFixed(4) + " pu"; $("cDelta").textContent = (r.delta * 180 / Math.PI).toFixed(3) + "°"; $("cReg").textContent = regulation.toFixed(3) + " %"; updateSVG(r, x); updatePhasor(vs, r.vr, r.current, r.delta, r.phi); updateGauges(r); drawVoltageGraph(vs, x, p, q); drawQGraph(q, r.qfacts); } /* ---------------------------------------------------------- SVG network ---------------------------------------------------------- */ function updateSVGDevice() { const title = $("svgFactsTitle"); const sub = $("svgFactsSub"); if (device === "svc") { title.textContent = "SVC"; sub.textContent = "STATIC VAR COMPENSATOR"; $("svcIcon").style.display = "block"; $("statcomIcon").style.display = "none"; } else if (device === "statcom") { title.textContent = "STATCOM"; sub.textContent = "STATIC SYNCHRONOUS COMPENSATOR"; $("svcIcon").style.display = "none"; $("statcomIcon").style.display = "block"; } else { title.textContent = "FACTS BYPASS"; sub.textContent = "NO SHUNT COMPENSATION"; $("svcIcon").style.display = "none"; $("statcomIcon").style.display = "none"; } } function updateSVG(r, x) { $("svgVr").textContent = r.vr.toFixed(3) + " pu"; $("svgX").textContent = "X = " + x.toFixed(2) + " pu"; const sign = r.qfacts >= 0 ? "+" : ""; $("svgQ").textContent = "Q = " + sign + r.qfacts.toFixed(3) + " pu"; } /* ---------------------------------------------------------- Phasor diagram ---------------------------------------------------------- */ function updatePhasor(vs, vr, current, delta, phi) { /* Diagram coordinate system. Vr lies on real axis. jXI is vertical component. Vs is resultant. */ const ox = 100; const oy = 500; const scale = 360; const vrLen = clamp(vr, .3, 1.2) * scale; const vsLen = clamp(vs, .3, 1.2) * scale; const deltaDeg = delta * 180 / Math.PI; /* Resultant Vs direction */ const vx = ox + vsLen * Math.cos(delta); const vy = oy - vsLen * Math.sin(delta); const vrx = ox + vrLen; /* jXI construction */ const jx = vx - vrx; const jy = vy; $("vrVector").setAttribute("x2", vrx); $("vrVector").setAttribute("y2", oy); $("jxVector").setAttribute("x1", vrx); $("jxVector").setAttribute("y1", oy); $("jxVector").setAttribute("x2", vx); $("jxVector").setAttribute("y2", vy); $("vsVector").setAttribute("x2", vx); $("vsVector").setAttribute("y2", vy); /* Current vector */ const iLen = clamp(current, .1, 1.4) * 210; const ix = ox + iLen * Math.cos(phi); const iy = oy - iLen * Math.sin(phi); $("iVector").setAttribute("x2", ix); $("iVector").setAttribute("y2", iy); /* labels */ $("vrLabel").setAttribute("x", vrx + 10); $("vrLabel").setAttribute("y", oy - 10); $("vsLabel").setAttribute("x", vx + 10); $("vsLabel").setAttribute("y", vy - 10); $("jxLabel").setAttribute("x", vx + 10); $("jxLabel").setAttribute("y", vy - 5); $("iLabel").setAttribute("x", ix + 8); $("iLabel").setAttribute("y", iy - 8); $("phVs").textContent = vs.toFixed(3) + " pu"; $("phVr").textContent = vr.toFixed(3) + " pu"; $("phI").textContent = current.toFixed(3) + " pu"; $("phDelta").textContent = deltaDeg.toFixed(2) + "°"; $("phPhi").textContent = (phi * 180 / Math.PI).toFixed(2) + "°"; /* dynamic angle arc */ const arcR = 135; const arcEndX = ox + arcR * Math.cos(delta); const arcEndY = oy - arcR * Math.sin(delta); const large = delta > Math.PI ? 1 : 0; $("deltaArc").setAttribute("d", `M ${ox + arcR} ${oy} A ${arcR} ${arcR} 0 ${large} 0 ${arcEndX} ${arcEndY}`); $("deltaLabel").setAttribute("x", ox + arcR * Math.cos(delta / 2) + 5); $("deltaLabel").setAttribute("y", oy - arcR * Math.sin(delta / 2) - 5); /* current-angle arc */ const phiAbs = Math.abs(phi); const phiEndX = ox + 90 * Math.cos(phi); const phiEndY = oy - 90 * Math.sin(phi); $("phiArc").setAttribute("d", `M ${ox + 90} ${oy} A 90 90 0 0 0 ${phiEndX} ${phiEndY}`); $("phiLabel").setAttribute("x", ox + 90 * Math.cos(phi / 2) + 5); $("phiLabel").setAttribute("y", oy - 90 * Math.sin(phi / 2) - 5); } /* ---------------------------------------------------------- Gauges ---------------------------------------------------------- */ function updateGauges(r) { const vNorm = clamp((r.vr - .8) / .4, 0, 1); const vDash = 330 - (330 * vNorm); $("voltageGauge").setAttribute("stroke-dashoffset", vDash); $("gaugeV").textContent = r.vr.toFixed(3); const qNorm = clamp((r.qfacts + 1) / 2, 0, 1); $("qGauge").setAttribute("stroke-dashoffset", 330 - (330 * qNorm)); $("gaugeQ").textContent = r.qfacts.toFixed(3); } /* ---------------------------------------------------------- Canvas utilities ---------------------------------------------------------- */ function canvasSetup(canvas) { const ctx = canvas.getContext("2d"); const dpr = window.devicePixelRatio || 1; const cssWidth = canvas.clientWidth || 850; const cssHeight = 330; canvas.width = cssWidth * dpr; canvas.height = cssHeight * dpr; ctx.scale(dpr, dpr); return { ctx, w: cssWidth, h: cssHeight }; } function axes(ctx, w, h, yMin, yMax, yTitle, xTitle) { const L = 55; const R = 18; const T = 25; const B = 42; ctx.clearRect(0, 0, w, h); ctx.font = "11px Arial"; for (let i = 0; i <= 6; i++) { const y = T + (h - T - B) * i / 6; const value = yMax - (yMax - yMin) * i / 6; ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(w - R, y); ctx.stroke(); ctx.fillStyle = "#64748b"; ctx.fillText(value.toFixed(2), 8, y + 4); } ctx.strokeStyle = "#7d8b9c"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, h - B); ctx.lineTo(w - R, h - B); ctx.stroke(); ctx.save(); ctx.translate(15, h / 2); ctx.rotate(-Math.PI / 2); ctx.fillStyle = "#526176"; ctx.fillText(yTitle, 0, 0); ctx.restore(); ctx.fillStyle = "#526176"; ctx.fillText(xTitle, w / 2 - 45, h - 12); return { L, R, T, B }; } /* ---------------------------------------------------------- Voltage graph ---------------------------------------------------------- */ function drawVoltageGraph(vs, x, p, q) { const canvas = $("voltageGraph"); const { ctx, w, h } = canvasSetup(canvas); const yMin = .55; const yMax = 1.15; const a = axes(ctx, w, h, yMin, yMax, "Voltage (pu)", "Reactive loading QL (pu)"); const curves = [["#dc2626", "none"], ["#f59e0b", "svc"], ["#0877d1", "statcom"]]; curves.forEach(([color, d]) => { ctx.beginPath(); for (let i = 0; i <= 60; i++) { const qLoad = -.05 + i * (1.0 + .05) / 60; let rr; if (d === "none") rr = solveForGraph(vs, x, p, qLoad, "none"); if (d === "svc") rr = solveForGraph(vs, x, p, qLoad, "svc"); if (d === "statcom") rr = solveForGraph(vs, x, p, qLoad, "statcom"); const xx = a.L + (w - a.L - a.R) * i / 60; const yy = a.T + (h - a.T - a.B) * (yMax - rr) / (yMax - yMin); if (i === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy); } ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke(); }); /* Vref */ const refY = a.T + (h - a.T - a.B) * (yMax - 1) / (yMax - yMin); ctx.setLineDash([6, 5]); ctx.strokeStyle = "#10a765"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(a.L, refY); ctx.lineTo(w - a.R, refY); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = "#087a43"; ctx.font = "11px Arial"; ctx.fillText("Vref = 1.00 pu", w - 110, refY - 7); } /* ---------------------------------------------------------- Graph solver ---------------------------------------------------------- */ function solveForGraph(vs, x, p, qLoad, d) { let vr = vs; const b = Number($("b").value); const vc = Number($("vc").value); const ilim = Number($("ilim").value); for (let k = 0; k < 60; k++) { let qf = 0; if (d === "svc") qf = b * vr * vr; if (d === "statcom") { let iq = (vc - vr) / Math.max(.05, x); iq = clamp(iq, -ilim, ilim); qf = vr * iq; } const qnet = qLoad - qf; let radicand = vs * vs - 2 * x * qnet - Math.pow(x * p / Math.max(vr, .3), 2); radicand = Math.max(.05, radicand); const target = Math.sqrt(radicand); vr = .75 * vr + .25 * target; vr = clamp(vr, .3, 1.25); } return vr; } /* ---------------------------------------------------------- Reactive power graph ---------------------------------------------------------- */ function drawQGraph(q, qfacts) { const canvas = $("qGraph"); const { ctx, w, h } = canvasSetup(canvas); const yMin = -.8; const yMax = .9; const a = axes(ctx, w, h, yMin, yMax, "Reactive power (pu)", "Operating point"); const qVals = [q, qfacts, q - qfacts]; const colors = ["#7856d6", "#10a765", "#0877d1"]; const names = ["Load Q", "FACTS Q", "Net Q"]; qVals.forEach((v, i) => { const y = a.T + (h - a.T - a.B) * (yMax - v) / (yMax - yMin); ctx.strokeStyle = colors[i]; ctx.lineWidth = i === 2 ? 3 : 7; if (i === 2) ctx.setLineDash([7, 5]); ctx.beginPath(); ctx.moveTo(110, y); ctx.lineTo(w - 35, y); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = colors[i]; ctx.font = "12px Arial"; ctx.fillText(names[i] + " = " + v.toFixed(3) + " pu", 120, y - 8); }); } /* ---------------------------------------------------------- Animation ---------------------------------------------------------- */ function animate() { const flowLines = document.querySelectorAll(".flow-dot"); flowLines.forEach(line => { if (animationRunning) { const current = Number(line.getAttribute("data-offset") || 0); line.setAttribute("data-offset", current - 1); line.style.strokeDashoffset = current; } }); animationFrame = requestAnimationFrame(animate); } function toggleAnimation() { animationRunning = !animationRunning; $("animBtn").textContent = animationRunning ? "⏸ Pause animation" : "▶ Resume animation"; } /* ---------------------------------------------------------- Scenarios ---------------------------------------------------------- */ function scenario(type) { if (type === "normal") { $("vs").value = 1.00; $("x").value = .40; $("p").value = .80; $("q").value = .30; } if (type === "heavy") { $("vs").value = .98; $("x").value = .50; $("p").value = 1.05; $("q").value = .65; } if (type === "lowv") { $("vs").value = .90; $("x").value = .45; $("p").value = .85; $("q").value = .55; } if (type === "weak") { $("vs").value = 1.00; $("x").value = .75; $("p").value = .90; $("q").value = .50; } simulate(); } /* ---------------------------------------------------------- Reset ---------------------------------------------------------- */ function resetAll() { $("vs").value = 1; $("x").value = .40; $("p").value = .80; $("q").value = .30; $("b").value = .35; $("vc").value = 1.05; $("ilim").value = .80; setDevice("svc"); } /* ---------------------------------------------------------- Event listeners ---------------------------------------------------------- */["vs", "x", "p", "q", "b", "vc", "ilim"].forEach(id => { $(id).addEventListener("input", simulate); }); /* ---------------------------------------------------------- Initial state ---------------------------------------------------------- */ setDevice("svc"); animate(); </script>
+</body>
+
+</html>
